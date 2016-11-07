@@ -6080,6 +6080,7 @@ function TSuperRttiContext.FromJson(TypeInfo: PTypeInfo; const obj: ISuperObject
   var
     f: TRttiField;
     v: TValue;
+    fieldObj: ISuperObject;
   begin
     case ObjectGetType(obj) of
       stObject:
@@ -6088,15 +6089,25 @@ function TSuperRttiContext.FromJson(TypeInfo: PTypeInfo; const obj: ISuperObject
           if Value.Kind <> tkClass then
             Value := GetTypeData(TypeInfo).ClassType.Create;
           for f in Context.GetType(Value.AsObject.ClassType).GetFields do
-            if f.FieldType <> nil then
-            begin
-              v := TValue.Empty;
-              Result := FromJson(f.FieldType.Handle, GetFieldDefault(f, obj.AsObject[GetFieldName(f)]), v);
-              if Result then
-                f.SetValue(Value.AsObject, v) else
-                Exit;
+          begin
+            if f.FieldType <> nil then begin
+              fieldObj:=obj.AsObject[GetFieldName(f)];
+              //ATRLP: 20160708: optional (no value in JSON) fields are allowed
+              if fieldObj<>nil then
+              begin
+                Result := FromJson(f.FieldType.Handle, GetFieldDefault(f, fieldObj), v);
+                if Result then
+                begin
+                  f.SetValue(Value.AsObject, v);
+                end else
+                begin
+                  Exit;
+                end;
+              end;
             end;
+          end;
         end;
+
       stNull:
         begin
           Value := nil;
@@ -6133,11 +6144,12 @@ function TSuperRttiContext.FromJson(TypeInfo: PTypeInfo; const obj: ISuperObject
         begin
           Result := FromJson(f.FieldType.Handle, GetFieldDefault(f, fieldObj), v);
           if Result then
-            f.SetValue(p, v) else
-            begin
-              //Writeln(f.Name);
-              Exit;
-            end;
+          begin
+            f.SetValue(p, v);
+          end
+          else begin
+            Exit;
+          end;
         end;
       end else
       begin
