@@ -118,11 +118,11 @@ unit superobject;
 
 interface
 uses
-  Classes, supertypes
+  supertypes
 {$IFDEF HAVE_RTTI}
   ,Generics.Collections, RTTI, TypInfo
 {$ENDIF}
-  ;
+  , System.Classes, System.SysUtils;
 
 const
   SUPER_ARRAY_LIST_DEFAULT_SIZE = 32;
@@ -835,9 +835,13 @@ function SOInvoke(const obj: TValue; const method: string; const params: ISuperO
 function SOInvoke(const obj: TValue; const method: string; const params: string; ctx: TSuperRttiContext = nil): ISuperObject; overload;
 {$ENDIF}
 
+type
+ESuperobjectMarshallingException=class(Exception)
+end;
+
 implementation
 uses
-  sysutils, Windows, superdate
+   Windows, superdate
 {$IFDEF FPC}
   ,sockets
 {$ELSE}
@@ -5908,13 +5912,14 @@ begin
   Result := obj;
 end;
 
+
 function TSuperRttiContext.AsType<T>(const obj: ISuperObject): T;
 var
   ret: TValue;
 begin
   if FromJson(TypeInfo(T), obj, ret) then
     Result := ret.AsType<T> else
-    raise exception.Create('Marshalling error');
+    raise ESuperobjectMarshallingException.Create('Marshalling error');
 end;
 
 function TSuperRttiContext.AsJson<T>(const obj: T; const index: ISuperObject = nil): ISuperObject;
